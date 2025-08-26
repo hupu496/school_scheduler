@@ -1,0 +1,95 @@
+{% extends 'scheduler/base.html' %}
+
+{% block content %}
+<h2>Timetable for Class {{ class_id }}</h2>
+
+<div class="table-responsive">
+    <table class="table table-bordered table-striped">
+        <thead class="table-dark">
+            <tr>
+                <th>Period</th>
+                <th>Monday</th>
+                <th>Tuesday</th>
+                <th>Wednesday</th>
+                <th>Thursday</th>
+                <th>Friday</th>
+                <th>Saturday</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for period in periods %}
+            <tr>
+                <td class="fw-bold">Period {{ period }}</td>
+                
+                <!-- Monday -->
+                <td>
+                    {% if timetable.Mon and timetable.Mon.period %}
+                        {{ timetable.Mon.period.subject }}<br>
+                        <small class="text-muted">{{ timetable.Mon.period.teacher }}</small>
+                    {% else %}
+                        Free
+                    {% endif %}
+                </td>
+                
+                <!-- Tuesday -->
+                <td>
+                    {% if timetable.Tue and timetable.Tue.period %}
+                        {{ timetable.Tue.period.subject }}<br>
+                        <small class="text-muted">{{ timetable.Tue.period.teacher }}</small>
+                    {% else %}
+                        Free
+                    {% endif %}
+                </td>
+                
+                <!-- Wednesday -->
+                <td>
+                    {% if timetable.Wed and timetable.Wed.period %}
+                        {{ timetable.Wed.period.subject }}<br>
+                        <small class="text-muted">{{ timetable.Wed.period.teacher }}</small>
+                    {% else %}
+                        Free
+                    {% endif %}
+                </td>
+                
+                <!-- Thursday -->
+                <td>
+                    {% if timetable.Thu and timetable.Thu.period %}
+                        {{ timetable.Thu.period.subject }}<br>
+                        <small class="text-muted">{{ timetable.Thu.period.teacher }}</small>
+                    {% else %}
+                        Free
+                    {% endif %}
+                </td>
+                
+                <!-- Friday -->
+                <td>
+                    {% if timetable.Fri and timetable.Fri.period %}
+                        {{ timetable.Fri.period.subject }}<br>
+                        <small class="text-muted">{{ timetable.Fri.period.teacher }}</small>
+                    {% else %}
+                        Free
+                    {% endif %}
+                </td>
+                
+                <!-- Saturday -->
+                <td>
+                    {% if period <= 4 %}
+                        {% if timetable.Sat and timetable.Sat.period %}
+                            {{ timetable.Sat.period.subject }}<br>
+                            <small class="text-muted">{{ timetable.Sat.period.teacher }}</small>
+                        {% else %}
+                            Free
+                        {% endif %}
+                    {% else %}
+                        -
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<a href="{% url 'generate_timetable' %}" class="btn btn-secondary">Generate Another Timetable</a>
+<a href="{% url 'index' %}" class="btn btn-outline-primary ms-2">Back to Home</a>
+{% endblock %}

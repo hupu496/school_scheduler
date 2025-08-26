@@ -1,0 +1,154 @@
+{% extends 'scheduler/base.html' %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8 mx-auto">
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">Add Subjects for Classes</h3>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    
+                    <div class="mb-4">
+                        <h5>Select Classes:</h5>
+                        <div class="row">
+                            {% for value, label in form.classes.field.choices %}
+                            <div class="col-md-4 mb-2">
+                                <div class="form-check">
+                                    <input class="form-check-input class-checkbox" type="checkbox" 
+                                           name="classes" value="{{ value }}" id="class_{{ value }}"
+                                           data-class="{{ value }}">
+                                    <label class="form-check-label" for="class_{{ value }}">
+                                        {{ label }}
+                                    </label>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    
+                    <hr>
+                    
+                    <div id="subject-inputs">
+                        {% for value, label in form.classes.field.choices %}
+                        <div class="mb-3 subject-input" id="subjects_class_{{ value }}" style="display: none;">
+                            <label for="input_class_{{ value }}" class="form-label">
+                                <strong>Subjects for {{ label }}:</strong>
+                            </label>
+                            <input type="text" name="subjects_class_{{ value }}" 
+                                   class="form-control" id="input_class_{{ value }}"
+                                   placeholder="Enter subjects separated by commas (e.g., Mathematics, Science, English)">
+                            <div class="form-text">Separate multiple subjects with commas</div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="fas fa-save"></i> Save Subjects
+                        </button>
+                        <a href="{% url 'index' %}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left"></i> Back to Home
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Display existing subjects -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h4 class="card-title">Existing Subjects</h4>
+            </div>
+            <div class="card-body">
+                {% if existing_subjects %}
+                <div class="row">
+                    {% for class_id, subjects in existing_subjects.items %}
+                    <div class="col-md-6 mb-3">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="card-title">Class {{ class_id }}</h5>
+                            </div>
+                            <div class="card-body">
+                                {% if subjects %}
+                                <ul class="list-group list-group-flush">
+                                    {% for subject in subjects %}
+                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                        {{ subject.subject_name }}
+                                        <span class="badge bg-primary rounded-pill">ID: {{ subject.id }}</span>
+                                    </li>
+                                    {% endfor %}
+                                </ul>
+                                {% else %}
+                                <p class="text-muted">No subjects added yet</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-muted">No subjects have been added yet.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.subject-input {
+    background-color: #f8f9fa;
+    padding: 15px;
+    border-radius: 8px;
+    border-left: 4px solid #007bff;
+    margin-bottom: 15px;
+}
+
+.card {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    border: 1px solid #dee2e6;
+}
+
+.card-header {
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const classCheckboxes = document.querySelectorAll('.class-checkbox');
+    
+    classCheckboxes.forEach(checkbox => {
+        // Add event listener for changes
+        checkbox.addEventListener('change', function() {
+            const classId = this.getAttribute('data-class');
+            const subjectDiv = document.getElementById(`subjects_class_${classId}`);
+            
+            if (this.checked) {
+                subjectDiv.style.display = 'block';
+                // Focus on the input field
+                const inputField = document.getElementById(`input_class_${classId}`);
+                if (inputField) {
+                    inputField.focus();
+                }
+            } else {
+                subjectDiv.style.display = 'none';
+                // Clear the input field
+                const inputField = document.getElementById(`input_class_${classId}`);
+                if (inputField) {
+                    inputField.value = '';
+                }
+            }
+        });
+        
+        // Trigger change event on page load if checkbox is checked
+        if (checkbox.checked) {
+            checkbox.dispatchEvent(new Event('change'));
+        }
+    });
+});
+</script>
+{% endblock %}

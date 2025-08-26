@@ -1,0 +1,218 @@
+{% extends 'scheduler/base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-5">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="mb-0"><i class="fas fa-link me-2"></i>Assign Teacher to Classes</h4>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <div class="mb-3">
+                            <label for="{{ form.teacher.id_for_label }}" class="form-label">Teacher:</label>
+                            {{ form.teacher }}
+                            {% if form.teacher.errors %}
+                            <div class="text-danger">{{ form.teacher.errors }}</div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Select Classes:</label>
+                            <div class="row">
+                                {% for value, label in form.classes.field.choices %}
+                                <div class="col-md-6 mb-2">
+                                    <div class="form-check">
+                                        <input class="form-check-input class-checkbox" type="checkbox" name="classes" 
+                                               value="{{ value }}" id="class_{{ value }}" data-class="{{ value }}">
+                                        <label class="form-check-label" for="class_{{ value }}">{{ label }}</label>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            {% if form.classes.errors %}
+                            <div class="text-danger">{{ form.classes.errors }}</div>
+                            {% endif %}
+                        </div>
+                        
+                        {% for class_id, subjects in class_subjects %}
+                        <div class="mb-3 class-subjects card" id="subjects_class_{{ class_id }}" style="display: none;">
+                            <div class="card-body">
+                                <h6 class="card-title">Subjects for Class {{ class_id }}:</h6>
+                                <div>
+                                    {% for subject in subjects %}
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="subjects_class_{{ class_id }}" 
+                                               value="{{ subject.id }}" id="subject_{{ subject.id }}_{{ class_id }}">
+                                        <label class="form-check-label" for="subject_{{ subject.id }}_{{ class_id }}">
+                                            {{ subject.subject_name }}
+                                        </label>
+                                    </div>
+                                    {% empty %}
+                                    <div class="alert alert-warning">
+                                        <small>No subjects added for this class. <a href="{% url 'add_subjects' %}">Add subjects first</a>.</small>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                        
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="fas fa-save me-2"></i>Assign Teacher
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-7">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="mb-0">
+                        <i class="fas fa-list me-2"></i>
+                        Current Assignments ({{ existing_assignments|length }})
+                    </h4>
+                </div>
+                <div class="card-body">
+                    {% if existing_assignments %}
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Teacher</th>
+                                    <th>Class</th>
+                                    <th>Subject</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for assignment in existing_assignments %}
+                                <tr>
+                                    <td>
+                                        <span class="badge bg-primary">{{ assignment.teacher.name }}</span>
+                                    </td>
+                                    <td>Class {{ assignment.class_id }}</td>
+                                    <td>{{ assignment.subject.subject_name }}</td>
+                                    <td>
+                                        <button type="button" class="btn btn-sm btn-outline-danger" 
+                                                data-bs-toggle="modal" data-bs-target="#deleteModal{{ assignment.id }}">
+                                          Delete
+                                        </button>
+                                        
+                                        <!-- Delete Modal -->
+                                        <div class="modal fade" id="deleteModal{{ assignment.id }}" tabindex="-1">
+                                            <div class="modal-dialog">
+                                                <div class="modal-content">
+                                                    <div class="modal-header">
+                                                        <h5 class="modal-title">Confirm Delete</h5>
+                                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                                    </div>
+                                                    <div class="modal-body">
+                                                        <p>Delete assignment for:</p>
+                                                        <div class="alert alert-info">
+                                                            <strong>Teacher:</strong> {{ assignment.teacher.name }}<br>
+                                                            <strong>Class:</strong> {{ assignment.class_id }}<br>
+                                                            <strong>Subject:</strong> {{ assignment.subject.subject_name }}
+                                                        </div>
+                                                    </div>
+                                                    <div class="modal-footer">
+                                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                                        <form method="post" action="{% url 'delete_assignment' assignment.id %}">
+                                                            {% csrf_token %}
+                                                            <button type="submit" class="btn btn-danger">Delete</button>
+                                                        </form>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center text-muted py-4">
+                        <i class="fas fa-link fa-3x mb-3"></i>
+                        <p>No teacher assignments yet.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Display messages -->
+{% if messages %}
+<div class="container mt-3">
+    {% for message in messages %}
+    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const classCheckboxes = document.querySelectorAll('.class-checkbox');
+    
+    classCheckboxes.forEach(checkbox => {
+        // Add event listener
+        checkbox.addEventListener('change', function() {
+            const classId = this.getAttribute('data-class');
+            const subjectDiv = document.getElementById(`subjects_class_${classId}`);
+            if (this.checked) {
+                subjectDiv.style.display = 'block';
+            } else {
+                subjectDiv.style.display = 'none';
+                // Uncheck all subject checkboxes for this class
+                const subjectCheckboxes = subjectDiv.querySelectorAll('input[type="checkbox"]');
+                subjectCheckboxes.forEach(cb => cb.checked = false);
+            }
+        });
+        
+        // Trigger change on page load if checked (for form validation errors)
+        if (checkbox.checked) {
+            checkbox.dispatchEvent(new Event('change'));
+        }
+    });
+});
+</script>
+
+<style>
+.card {
+    border: none;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.card-header {
+    background: linear-gradient(135deg, #1a5fb4 0%, #3584e4 100%);
+    color: white;
+    border-radius: 12px 12px 0 0 !important;
+    padding: 15px 20px;
+    font-weight: 600;
+}
+
+.class-subjects {
+    background-color: #f8f9fa;
+    border-left: 4px solid #3584e4;
+}
+
+.badge {
+    font-size: 0.8em;
+}
+
+.btn-sm {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+}
+</style>
+{% endblock %}

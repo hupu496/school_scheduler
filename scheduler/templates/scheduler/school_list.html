@@ -1,0 +1,133 @@
+{% extends 'scheduler/base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="fas fa-school me-2"></i>School Management</h2>
+        <a href="{% url 'add_school' %}" class="btn btn-primary">
+            <i class="fas fa-plus me-2"></i>Add New School
+        </a>
+    </div>
+
+    {% if schools %}
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">Registered Schools ({{ schools|length }})</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>School Name</th>
+                            <th>Code</th>
+                            <th>Address</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for school in schools %}
+                        <tr>
+                            <td>{{ school.id }}</td>
+                            <td>
+                                <strong>{{ school.name }}</strong>
+                            </td>
+                            <td>
+                                <span class="badge bg-secondary">{{ school.code }}</span>
+                            </td>
+                            <td>
+                                <small class="text-muted">{{ school.address|truncatewords:10 }}</small>
+                            </td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <a href="{% url 'edit_school' school.id %}" class="btn btn-outline-primary" title="Edit">
+                                       Edit
+                                    </a>
+                                    <button type="button" class="btn btn-outline-danger" 
+                                            data-bs-toggle="modal" data-bs-target="#deleteModal{{ school.id }}" title="Delete">
+                                        Delete
+                                    </button>
+                                </div>
+
+                                <!-- Delete Modal -->
+                                <div class="modal fade" id="deleteModal{{ school.id }}" tabindex="-1">
+                                    <div class="modal-dialog">
+                                        <div class="modal-content">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title">Confirm Delete</h5>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                            </div>
+                                            <div class="modal-body">
+                                                <p>Are you sure you want to delete <strong>{{ school.name }}</strong>?</p>
+                                                <p class="text-muted">This action cannot be undone.</p>
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                                <form method="post" action="{% url 'delete_school' school.id %}">
+                                                    {% csrf_token %}
+                                                    <button type="submit" class="btn btn-danger">Delete</button>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="card">
+        <div class="card-body text-center py-5">
+            <i class="fas fa-school fa-4x text-muted mb-3"></i>
+            <h5 class="text-muted">No Schools Registered</h5>
+            <p class="text-muted">Get started by adding your first school.</p>
+            <a href="{% url 'add_school' %}" class="btn btn-primary">
+                <i class="fas fa-plus me-2"></i>Add First School
+            </a>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Display messages -->
+{% if messages %}
+<div class="container mt-3">
+    {% for message in messages %}
+    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<style>
+.card {
+    border: none;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.card-header {
+    background: linear-gradient(135deg, #1a5fb4 0%, #3584e4 100%);
+    color: white;
+    border-radius: 12px 12px 0 0 !important;
+    padding: 15px 20px;
+    font-weight: 600;
+}
+
+.btn-group-sm > .btn {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+}
+
+.badge {
+    font-size: 0.8em;
+}
+</style>
+{% endblock %}

@@ -1,0 +1,167 @@
+{% extends 'scheduler/base.html' %}
+{% load static %}
+
+{% block content %}
+    <style>
+        /* Your CSS styles here */
+    </style>
+
+    <!-- Header -->
+    <div class="header text-center">
+        <div class="container">
+            <h1><i class="fas fa-calendar-alt me-2"></i>School Timetable Generator</h1>
+            <p class="lead">Create professional timetables for your school with ease</p>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Class Selection Card -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h3 class="mb-0"><i class="fas fa-chalkboard me-2"></i>Select Class</h3>
+            </div>
+            <div class="card-body">
+                <form method="post" action="{% url 'generate_timetable' %}">
+                    {% csrf_token %}
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="classSelect" class="form-label">Choose Class</label>
+                                <select class="form-select" id="classSelect" name="class_id" required>
+                                    <option value="">-- Select Class --</option>
+                                    {% for value, label in classes %}
+                                    <option value="{{ value }}">{{ label }}</option>
+                                    {% empty %}
+                                    <option value="">No classes available</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="classTeacher" class="form-label">Class Teacher</label>
+                                <select class="form-select" id="classTeacher" name="class_teacher" required>
+                                    <option value="">-- Select Teacher --</option>
+                                    {% for teacher in teachers %}
+                                    <option value="{{ teacher.name }}">{{ teacher.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="effectiveDate" class="form-label">Effective From</label>
+                        <input type="date" class="form-control" id="effectiveDate" name="effective_date" value="{{ today|date:'Y-m-d' }}">
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-sync-alt me-2"></i>Generate Timetable
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        {% if timetable_data %}
+        <!-- Timetable Card -->
+        <div class="timetable-card">
+            <div class="timetable-header">
+                <h3 class="mb-0">
+                    {% if school %}{{ school.name }}{% else %}TECHNO MISSION SCHOOL{% endif %}
+                </h3>
+                <p class="mb-0">{% if school %}{{ school.address }}{% else %}MOHANPUR, SAMASTIPUR{% endif %}</p>
+                <h4 class="mb-0 mt-2">Routine of Class - {{ class_id }}</h4>
+                <p class="mb-0">Effective From - {{ effective_date }}</p>
+                <p class="mb-0">Class Teacher - {{ class_teacher }}</p>
+            </div>
+            <div class="timetable-body">
+                <table class="table table-timetable">
+                    <thead>
+                        <tr>
+                            <th>Day</th>
+                            <th class="period-header">1</th>
+                            <th class="period-header">2</th>
+                            <th class="period-header">3</th>
+                            <th class="period-header">4</th>
+                            <th class="period-header">5</th>
+                            <th class="period-header">6</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for day in days %}
+                        <tr>
+                            <td class="fw-bold">
+                                {% if day == 'Mon' %}Monday
+                                {% elif day == 'Tue' %}Tuesday
+                                {% elif day == 'Wed' %}Wednesday
+                                {% elif day == 'Thu' %}Thursday
+                                {% elif day == 'Fri' %}Friday
+                                {% elif day == 'Sat' %}Saturday
+                                {% endif %}
+                            </td>
+                          {% for period in periods %}
+                            <td class="subject-cell">
+                                {% if timetable_data.day and timetable_data.day.period %}
+                                    {{ timetable_data.day.period.subject }}
+                                    {% if timetable_data.day.period.teacher %}
+                                        <br>
+                                        <small class="text-muted">
+                                            {{ timetable_data.day.period.teacher }}
+                                        </small>
+                                    {% endif %}
+                                {% else %}
+                                    {% if day == 'Sat' and period > 4 %}---{% else %}Free{% endif %}
+                                {% endif %}
+                            </td>
+                        {% endfor %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="action-buttons">
+            <button class="btn btn-primary" onclick="window.print()">
+                <i class="fas fa-print me-2"></i>Print
+            </button>
+            <a href="{% url 'generate_timetable' %}" class="btn btn-primary">
+                <i class="fas fa-redo me-2"></i>Generate Another
+            </a>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Footer -->
+    <div class="footer mt-5">
+        <div class="container">
+            <p class="mb-0">© 2024 School Timetable Generator | Developed for {% if school %}{{ school.name }}{% else %}Techno Mission School{% endif %}</p>
+        </div>
+    </div>
+
+    <script>
+        // AJAX to load teachers when class is selected
+        document.getElementById('classSelect').addEventListener('change', function() {
+            const classId = this.value;
+            if (classId) {
+                fetch(`/get_teachers_for_class/?class_id=${classId}`)
+                    .then(response => response.json())
+                    .then(teachers => {
+                        const teacherSelect = document.getElementById('classTeacher');
+                        teacherSelect.innerHTML = '<option value="">-- Select Teacher --</option>';
+                        
+                        teachers.forEach(teacher => {
+                            const option = document.createElement('option');
+                            option.value = teacher.name;
+                            option.textContent = teacher.name;
+                            teacherSelect.appendChild(option);
+                        });
+                    })
+                    .catch(error => console.error('Error:', error));
+            }
+        });
+
+        // Set default date to today
+        document.getElementById('effectiveDate').valueAsDate = new Date();
+    </script>
+{% endblock %}

@@ -1,0 +1,63 @@
+school_scheduler/
+├── manage.py
+├── requirements.txt
+└── scheduler/
+    ├── __init__.py
+    ├── admin.py
+    ├── apps.py
+    ├── forms.py
+    ├── models.py
+    ├── templates/
+    │   └── scheduler/
+    │       ├── base.html
+    │       ├── index.html
+    │       ├── add_subjects.html
+    │       ├── add_teacher.html
+    │       ├── assign_teacher.html
+    │       └── generate_timetable.html
+    ├── urls.py
+    └── views.py
+
+                    ┌──────────────────┐
+                │  Master School   │
+                │ (Name, Code,     │
+                │  Address)        │
+                └───────┬──────────┘
+                        │
+                ┌──────────────────┐
+                │ Master Subject   │
+                │ Select Class(1-10)│
+                │ + Subjects        │
+                └───────┬──────────┘
+                        │
+                ┌──────────────────┐
+                │ Master Teacher   │
+                │ Name, No.Classes │
+                │ Shift(1/2),      │
+                │ Select Classes   │
+                │ -> Choose Subjects│
+                └───────┬──────────┘
+                        │
+                ┌──────────────────┐
+                │ Create Routine   │
+                │ Select Class     │
+                │ Show Teachers +  │
+                │ Subject Options  │
+                └───────┬──────────┘
+                        │
+        ┌────────────────────────────────────┐
+        │ Routine Generation (Algorithm)     │
+        │ - Auto assign teachers & subjects  │
+        │ - Check conflicts (same teacher    │
+        │   not in 2 classes same period)    │
+        │ - Respect shifts (1/2)             │
+        │ - Limit by teacher.no_of_classes   │
+        │ - Allocate 6 periods/day, 6 days   │
+        └────────────────────────────────────┘
+                        │
+                ┌──────────────────┐
+                │ Output Routines  │
+                │ Class-wise       │
+                │ Teacher-wise     │
+                │ (Mon–Sat, 6 Pd)  │
+                └──────────────────┘

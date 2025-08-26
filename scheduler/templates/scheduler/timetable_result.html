@@ -1,0 +1,156 @@
+{% extends 'scheduler/base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card">
+        <div class="card-header bg-primary text-white text-center">
+            <h3 class="mb-0">
+                {% if school %}{{ school.name }}{% else %}SCHOOL TIMETABLE{% endif %}
+            </h3>
+            <p class="mb-0">{% if school %}{{ school.address }}{% else %}School Address{% endif %}</p>
+            <h4 class="mb-0 mt-2">Class {{ class_id }} Timetable</h4>
+            <p class="mb-0">Effective From: {{ effective_date }}</p>
+            <p class="mb-0">Class Teacher: {{ class_teacher }}</p>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-bordered table-striped timetable-table">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Period</th>
+                            <th>Monday</th>
+                            <th>Tuesday</th>
+                            <th>Wednesday</th>
+                            <th>Thursday</th>
+                            <th>Friday</th>
+                            <th>Saturday</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in timetable_matrix %}
+                        <tr>
+                            <td >Period {{ row.period }}</td>
+                            
+                            <!-- Monday -->
+                            <td class="subject-cell">
+                                {{ row.days.Mon.subject }}
+                                {% if row.days.Mon.teacher %}
+                                    <br><small class="text-muted">{{ row.days.Mon.teacher }}</small>
+                                {% endif %}
+                            </td>
+                            
+                            <!-- Tuesday -->
+                            <td class="subject-cell">
+                                {{ row.days.Tue.subject }}
+                                {% if row.days.Tue.teacher %}
+                                    <br><small class="text-muted">{{ row.days.Tue.teacher }}</small>
+                                {% endif %}
+                            </td>
+                            
+                            <!-- Wednesday -->
+                            <td class="subject-cell">
+                                {{ row.days.Wed.subject }}
+                                {% if row.days.Wed.teacher %}
+                                    <br><small class="text-muted">{{ row.days.Wed.teacher }}</small>
+                                {% endif %}
+                            </td>
+                            
+                            <!-- Thursday -->
+                            <td class="subject-cell">
+                                {{ row.days.Thu.subject }}
+                                {% if row.days.Thu.teacher %}
+                                    <br><small class="text-muted">{{ row.days.Thu.teacher }}</small>
+                                {% endif %}
+                            </td>
+                            
+                            <!-- Friday -->
+                            <td class="subject-cell">
+                                {{ row.days.Fri.subject }}
+                                {% if row.days.Fri.teacher %}
+                                    <br><small class="text-muted">{{ row.days.Fri.teacher }}</small>
+                                {% endif %}
+                            </td>
+                            
+                            <!-- Saturday -->
+                            <td class="subject-cell">
+                                {{ row.days.Sat.subject }}
+                                {% if row.days.Sat.teacher and row.days.Sat.subject != '-' %}
+                                    <br><small class="text-muted">{{ row.days.Sat.teacher }}</small>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="mt-4 text-center">
+                <a href="{% url 'generate_timetable' %}" class="btn btn-primary me-2">
+                    <i class="fas fa-sync-alt me-1"></i>Generate Another
+                </a>
+                <button onclick="window.print()" class="btn btn-success me-2">
+                    <i class="fas fa-print me-1"></i>Print
+                </button>
+                <a href="{% url 'index' %}" class="btn btn-secondary">
+                    <i class="fas fa-home me-1"></i>Back to Home
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.timetable-table {
+    font-size: 14px;
+}
+
+.period-header {
+    background-color: #2c3e50;
+    color: white;
+    text-align: center;
+    width: 80px;
+}
+
+.subject-cell {
+    background-color: #f8f9fa;
+    border-radius: 5px;
+    text-align: center;
+    min-width: 120px;
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+
+.subject-cell:hover {
+    background-color: #e9ecef;
+    transform: scale(1.02);
+}
+
+.subject-cell small {
+    font-size: 11px;
+}
+
+.card-header {
+    background: linear-gradient(135deg, #1a5fb4 0%, #3584e4 100%) !important;
+}
+
+.table-dark {
+    background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%) !important;
+}
+
+@media print {
+    .btn {
+        display: none !important;
+    }
+    
+    .card {
+        border: none !important;
+        box-shadow: none !important;
+    }
+    
+    .subject-cell {
+        background-color: #f8f9fa !important;
+        border: 1px solid #dee2e6 !important;
+    }
+}
+</style>
+{% endblock %}
