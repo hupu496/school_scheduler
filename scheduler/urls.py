@@ -15,4 +15,6 @@ urlpatterns = [
     path('delete_assignment/<int:assignment_id>/', views.delete_assignment, name='delete_assignment'),
     path('generate_timetable/', views.generate_timetable, name='generate_timetable'),
     path('get_teachers_for_class/', views.get_teachers_for_class, name='get_teachers_for_class'),
+    path('teacher_routine/', views.teacher_routine, name='teacher_routine'),
+    path('teacher_routine/<int:teacher_id>/', views.teacher_detail_routine, name='teacher_detail_routine'),
 ]

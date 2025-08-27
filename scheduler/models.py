@@ -32,7 +32,28 @@ class TeacherMaster(models.Model):
     no_of_classes = models.IntegerField(default=0)
     
     def __str__(self):
-        return f"{self.name} (Shift {self.shift})"
+        return f"{self.name} (Shift {self.get_shift_display()})"
+    
+    def clean(self):
+        # Validate that no_of_classes is reasonable
+        if self.no_of_classes < 0:
+            raise ValidationError({'no_of_classes': 'Number of classes cannot be negative.'})
+        if self.no_of_classes > 40:  # Assuming 40 periods per week maximum
+            raise ValidationError({'no_of_classes': 'Number of classes cannot exceed 40 per week.'})
+    
+    def get_remaining_capacity(self):
+        """Get remaining teaching capacity for this teacher"""
+        total_assigned = Timetable.objects.filter(teacher=self).count()
+        return max(0, self.no_of_classes - total_assigned)
+    
+    def can_teach_in_period(self, period):
+        """Check if teacher can teach in given period based on shift"""
+        if self.shift == 1:  # 1st shift - only periods 1-3
+            return period <= 3
+        elif self.shift == 2:  # 2nd shift - only periods 4-6
+            return period >= 4
+        else:  # All shifts - any period
+            return True
 
 class TeacherClassSubject(models.Model):
     teacher = models.ForeignKey(TeacherMaster, on_delete=models.CASCADE)
