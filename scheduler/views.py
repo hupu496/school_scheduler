@@ -3,7 +3,7 @@ from django.http import JsonResponse
 from django.http import HttpResponse
 from django.contrib import messages
 from django.contrib import messages
-
+from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 
 from .models import SubjectMaster, TeacherMaster, TeacherClassSubject, Timetable,SchoolMaster
@@ -11,8 +11,9 @@ from .forms import SubjectForm, TeacherForm, TeacherAssignmentForm,SchoolForm
 from django.shortcuts import get_object_or_404
 import json
 from collections import defaultdict
-from datetime import datetime
+
 import random
+from datetime import datetime, timedelta
 
 
 def index(request):
@@ -584,4 +585,53 @@ def teacher_routine(request):
         'timetable_entries_count': Timetable.objects.count(),
         'over_assigned_teachers': over_assigned_count,
         'under_utilized_teachers': under_utilized_count
+    })
+def teacher_detail_routine(request, teacher_id):
+    """Show detailed routine for a specific teacher across all classes"""
+    teacher = get_object_or_404(TeacherMaster, id=teacher_id)
+    
+    # Get date range for the week
+    today = timezone.now().date()
+    start_date = today - timedelta(days=today.weekday())
+    end_date = start_date + timedelta(days=5)
+    
+    # Get all timetable entries
+    timetable_entries = Timetable.objects.filter(
+        teacher=teacher
+    ).select_related('subject').order_by('day', 'period_no', 'class_id')
+    
+    # Simple data structure for template
+    days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+    periods = range(1, 7)
+    
+    # Create a simple list of entries for the template
+    schedule_entries = []
+    for entry in timetable_entries:
+        schedule_entries.append({
+            'day': entry.day,
+            'period': entry.period_no,
+            'class_id': entry.class_id,
+            'subject': entry.subject.subject_name,
+            'has_shift_conflict': (
+                (teacher.shift == 1 and entry.period_no > 3) or
+                (teacher.shift == 2 and entry.period_no <= 3)
+            )
+        })
+    
+    # Statistics
+    total_periods = timetable_entries.count()
+    classes_taught = sorted(set(entry.class_id for entry in timetable_entries))
+    subjects_taught = list(set(entry.subject.subject_name for entry in timetable_entries))
+    
+    return render(request, 'scheduler/teacher_detail_routine.html', {
+        'teacher': teacher,
+        'schedule_entries': schedule_entries,
+        'days': days,
+        'periods': periods,
+        'start_date': start_date,
+        'end_date': end_date,
+        'total_periods': total_periods,
+        'classes_taught': classes_taught,
+        'subjects_taught': subjects_taught,
+        'remaining_capacity': max(0, teacher.no_of_classes - total_periods)
     })

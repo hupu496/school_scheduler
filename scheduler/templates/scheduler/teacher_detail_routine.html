@@ -1,0 +1,111 @@
+{% extends 'scheduler/base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card">
+        <div class="card-header bg-primary text-white">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h3 class="mb-0"><i class="fas fa-user-tie me-2"></i>Teacher Routine: {{ teacher.name }}</h3>
+                    <p class="mb-0">Week: {{ start_date|date:"M d" }} - {{ end_date|date:"M d, Y" }}</p>
+                </div>
+                <a href="{% url 'teacher_routine' %}" class="btn btn-light btn-sm">
+                    <i class="fas fa-arrow-left me-1"></i>Back to All Teachers
+                </a>
+            </div>
+        </div>
+        <div class="card-body">
+            <!-- Teacher Stats -->
+            <div class="row mb-4">
+                <div class="col-md-3">
+                    <div class="card text-center">
+                        <div class="card-body py-2">
+                            <h6>Shift</h6>
+                            <span class="badge 
+                                {% if teacher.shift == 1 %}bg-primary
+                                {% elif teacher.shift == 2 %}bg-success
+                                {% else %}bg-info{% endif %}">
+                                {{ teacher.get_shift_display }}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card text-center">
+                        <div class="card-body py-2">
+                            <h6>Assigned/Max</h6>
+                            <h5 class="mb-0 {% if total_periods > teacher.no_of_classes %}text-danger{% endif %}">
+                                {{ total_periods }}/{{ teacher.no_of_classes }}
+                            </h5>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card text-center">
+                        <div class="card-body py-2">
+                            <h6>Classes</h6>
+                            <h5 class="mb-0">{{ classes_taught|length }}</h5>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card text-center">
+                        <div class="card-body py-2">
+                            <h6>Subjects</h6>
+                            <h5 class="mb-0">{{ subjects_taught|length }}</h5>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Weekly Schedule -->
+            <div class="table-responsive">
+                <table class="table table-bordered">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Time/Day</th>
+                            <th>Monday</th>
+                            <th>Tuesday</th>
+                            <th>Wednesday</th>
+                            <th>Thursday</th>
+                            <th>Friday</th>
+                            <th>Saturday</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for period in periods %}
+                        <tr>
+                            <td class="fw-bold period-header">Period {{ period }}</td>
+                            {% for day in days %}
+                            <td class="subject-cell">
+                                {% for entry in schedule_entries %}
+                                    {% if entry.day == day and entry.period == period %}
+                                        <div class="class-assignment mb-2 p-2 rounded">
+                                            <strong>Class {{ entry.class_id }}</strong>
+                                            <br>
+                                            <small>{{ entry.subject }}</small>
+                                            {% if entry.has_shift_conflict %}
+                                                <br>
+                                                <small class="text-danger">⚠️ Shift Conflict</small>
+                                            {% endif %}
+                                        </div>
+                                    {% endif %}
+                                {% endfor %}
+                            </td>
+                            {% endfor %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Print Button -->
+            <div class="text-center mt-4">
+                <button onclick="window.print()" class="btn btn-success">
+                    <i class="fas fa-print me-2"></i>Print Routine
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
