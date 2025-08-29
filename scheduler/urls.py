@@ -17,4 +17,5 @@ urlpatterns = [
     path('get_teachers_for_class/', views.get_teachers_for_class, name='get_teachers_for_class'),
     path('teacher_routine/', views.teacher_routine, name='teacher_routine'),
     path('teacher_routine/<int:teacher_id>/', views.teacher_detail_routine, name='teacher_detail_routine'),
+    path('teacher_routine_sheet/', views.teacher_routine_sheet, name='teacher_routine_sheet'),
 ]

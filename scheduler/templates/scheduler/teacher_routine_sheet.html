@@ -1,0 +1,416 @@
+{% extends 'scheduler/base.html' %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white text-center">
+            <h3 class="mb-1"><i class="fas fa-chalkboard-teacher me-2"></i>Teacher Routine Master Sheet</h3>
+            <p class="mb-0">Week: {{ start_date|date:"M d, Y" }} to {{ end_date|date:"M d, Y" }}</p>
+            <p class="mb-0">Generated on: {% now "M d, Y h:i A" %}</p>
+        </div>
+    </div>
+
+    <!-- Summary Statistics -->
+    <div class="row mb-4">
+        <div class="col-md-2 col-4 mb-3">
+            <div class="card text-center bg-primary text-white">
+                <div class="card-body py-3">
+                    <i class="fas fa-users fa-2x mb-2"></i>
+                    <h5>{{ total_teachers }}</h5>
+                    <p class="mb-0 small">Teachers</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2 col-4 mb-3">
+            <div class="card text-center bg-success text-white">
+                <div class="card-body py-3">
+                    <i class="fas fa-calendar-alt fa-2x mb-2"></i>
+                    <h5>{{ total_entries }}</h5>
+                    <p class="mb-0 small">Periods</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2 col-4 mb-3">
+            <div class="card text-center bg-info text-white">
+                <div class="card-body py-3">
+                    <i class="fas fa-clock fa-2x mb-2"></i>
+                    <h5>6</h5>
+                    <p class="mb-0 small">Days</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2 col-4 mb-3">
+            <div class="card text-center bg-warning text-white">
+                <div class="card-body py-3">
+                    <i class="fas fa-exclamation-triangle fa-2x mb-2"></i>
+                    <h5>{{ over_assigned_count }}</h5>
+                    <p class="mb-0 small">Over-assigned</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2 col-4 mb-3">
+            <div class="card text-center bg-secondary text-white">
+                <div class="card-body py-3">
+                    <i class="fas fa-clock fa-2x mb-2"></i>
+                    <h5>{{ under_utilized_count }}</h5>
+                    <p class="mb-0 small">Under-utilized</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2 col-4 mb-3">
+            <div class="card text-center bg-danger text-white">
+                <div class="card-body py-3">
+                    <i class="fas fa-times-circle fa-2x mb-2"></i>
+                    <h5>{{ total_shift_conflicts }}</h5>
+                    <p class="mb-0 small">Shift Conflicts</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Teacher Routine Sheet -->
+    <div class="card">
+        <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="fas fa-list-alt me-2"></i>Complete Teacher Schedule</h5>
+            <span class="badge bg-light text-dark">{{ total_teachers }} Teachers</span>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-bordered table-striped mb-0">
+                    <thead class="table-dark">
+                        <tr>
+                            <th rowspan="2" class="text-center align-middle">Teacher</th>
+                            <th rowspan="2" class="text-center align-middle">Shift</th>
+                            <th rowspan="2" class="text-center align-middle">Capacity</th>
+                            {% for day in days %}
+                            <th colspan="{{ periods|length }}" class="text-center">{{ day }}</th>
+                            {% endfor %}
+                            <th rowspan="2" class="text-center align-middle">Total</th>
+                            <th rowspan="2" class="text-center align-middle">Status</th>
+                        </tr>
+                        <tr>
+                            {% for day in days %}
+                            {% for period in periods %}
+                            <th class="text-center">P{{ period }}</th>
+                            {% endfor %}
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for data in all_teacher_schedules %}
+                        <tr>
+                            <!-- Teacher Information -->
+                            <td class="teacher-info">
+                                <strong>{{ data.teacher.name }}</strong>
+                                <br>
+                                <small class="text-muted">ID: {{ data.teacher.id }}</small>
+                            </td>
+                            
+                            <!-- Shift -->
+                            <td class="text-center">
+                                <span class="badge 
+                                    {% if data.teacher.shift == 1 %}bg-primary
+                                    {% elif data.teacher.shift == 2 %}bg-success
+                                    {% else %}bg-info{% endif %}">
+                                    {{ data.teacher.get_shift_display }}
+                                </span>
+                            </td>
+                            
+                            <!-- Capacity -->
+                            <td class="text-center">
+                                <small>{{ data.total_periods }}/{{ data.teacher.no_of_classes }}</small>
+                                <br>
+                                <span class="badge {% if data.remaining_capacity > 0 %}bg-success{% else %}bg-secondary{% endif %}">
+                                    {{ data.remaining_capacity }} left
+                                </span>
+                            </td>
+                            
+                            <!-- Daily Periods -->
+                            {% for day in days %}
+                            {% for period in periods %}
+                            <td class="text-center period-cell {% if data.schedule[day][period] %}has-assignment{% endif %}">
+                                {% if data.schedule[day][period] %}
+                                    {% for assignment in data.schedule[day][period] %}
+                                        <div class="assignment">
+                                            <small class="fw-bold">C{{ assignment.class_id }}</small>
+                                            <br>
+                                            <small>{{ assignment.subject|truncatewords:1 }}</small>
+                                            {% if data.teacher.shift == 1 and period > 3 %}
+                                                <br>
+                                                <small class="text-danger">⚠️</small>
+                                            {% elif data.teacher.shift == 2 and period <= 3 %}
+                                                <br>
+                                                <small class="text-danger">⚠️</small>
+                                            {% endif %}
+                                        </div>
+                                    {% endfor %}
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            {% endfor %}
+                            {% endfor %}
+                            
+                            <!-- Total Periods -->
+                            <td class="text-center fw-bold 
+                                {% if data.is_over_assigned %}text-danger
+                                {% elif data.total_periods == data.teacher.no_of_classes %}text-success
+                                {% else %}text-primary{% endif %}">
+                                {{ data.total_periods }}
+                            </td>
+                            
+                            <!-- Status -->
+                            <td class="text-center">
+                                {% if data.is_over_assigned %}
+                                    <span class="badge bg-danger">Over</span>
+                                {% elif data.is_under_utilized %}
+                                    <span class="badge bg-warning">Under</span>
+                                {% else %}
+                                    <span class="badge bg-success">Optimal</span>
+                                {% endif %}
+                                {% if data.shift_conflicts > 0 %}
+                                    <br>
+                                    <small class="text-danger">{{ data.shift_conflicts }}⚠️</small>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Legend and Notes -->
+    <div class="row mt-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0"><i class="fas fa-info-circle me-2"></i>Legend & Symbols</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><span class="badge bg-primary me-2">1st</span> 1st Shift Teacher</p>
+                            <p><span class="badge bg-success me-2">2nd</span> 2nd Shift Teacher</p>
+                            <p><span class="badge bg-info me-2">All</span> All Shifts Teacher</p>
+                            <p><span class="text-danger me-2">⚠️</span> Shift Timing Conflict</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><span class="badge bg-danger me-2">Over</span> Over-assigned Teacher</p>
+                            <p><span class="badge bg-warning me-2">Under</span> Under-utilized Teacher</p>
+                            <p><span class="badge bg-success me-2">Optimal</span> Optimal Assignment</p>
+                            <p><span class="text-muted me-2">-</span> Free Period</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0"><i class="fas fa-clipboard-list me-2"></i>Summary Report</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-6">
+                            <p><strong>Total Teachers:</strong> {{ total_teachers }}</p>
+                            <p><strong>Total Periods Assigned:</strong> {{ total_entries }}</p>
+                            <p><strong>Days Covered:</strong> 6 days</p>
+                        </div>
+                        <div class="col-6">
+                            <p><strong>Over-assigned Teachers:</strong> {{ over_assigned_count }}</p>
+                            <p><strong>Under-utilized Teachers:</strong> {{ under_utilized_count }}</p>
+                            <p><strong>Shift Conflicts:</strong> {{ total_shift_conflicts }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="text-center mt-4">
+        <button onclick="window.print()" class="btn btn-success me-2 mb-2">
+            <i class="fas fa-print me-2"></i>Print Master Sheet
+        </button>
+        <a href="{% url 'teacher_routine' %}" class="btn btn-primary me-2 mb-2">
+            <i class="fas fa-list me-2"></i>Teacher List View
+        </a>
+        <a href="{% url 'generate_timetable' %}" class="btn btn-warning me-2 mb-2">
+            <i class="fas fa-calendar me-2"></i>Generate Timetable
+        </a>
+        <a href="{% url 'index' %}" class="btn btn-secondary mb-2">
+            <i class="fas fa-home me-2"></i>Dashboard
+        </a>
+    </div>
+</div>
+
+<style>
+.teacher-info {
+    background-color: #f8f9fa;
+    min-width: 150px;
+    position: sticky;
+    left: 0;
+    z-index: 2;
+}
+
+.period-cell {
+    min-width: 80px;
+    max-width: 100px;
+    background-color: #fafafa;
+    transition: all 0.2s ease;
+}
+
+.period-cell.has-assignment {
+    background-color: #e8f5e8;
+    border: 1px solid #d4edda;
+}
+
+.assignment {
+    padding: 3px;
+    border-radius: 4px;
+    background-color: white;
+    border: 1px solid #c3e6cb;
+    font-size: 11px;
+    line-height: 1.2;
+    cursor: pointer;
+}
+
+.assignment:hover {
+    background-color: #d4edda;
+    transform: scale(1.05);
+}
+
+.table th {
+    vertical-align: middle;
+    text-align: center;
+    position: sticky;
+    top: 0;
+    z-index: 3;
+}
+
+.table-dark th {
+    background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .table-responsive {
+        font-size: 11px;
+        overflow-x: auto;
+    }
+    
+    .period-cell {
+        min-width: 60px;
+        max-width: 70px;
+        padding: 4px;
+    }
+    
+    .teacher-info {
+        min-width: 120px;
+        font-size: 12px;
+        position: sticky;
+        left: 0;
+        background-color: #f8f9fa;
+    }
+    
+    .assignment {
+        font-size: 9px;
+        padding: 2px;
+    }
+    
+    .card-body {
+        padding: 10px;
+    }
+    
+    .btn {
+        font-size: 14px;
+        padding: 0.5rem 0.75rem;
+    }
+}
+
+@media print {
+    .btn {
+        display: none !important;
+    }
+    
+    .card {
+        border: 1px solid #ddd !important;
+        box-shadow: none !important;
+    }
+    
+    .table {
+        font-size: 10px;
+    }
+    
+    .period-cell {
+        min-width: 70px;
+    }
+    
+    .teacher-info {
+        background-color: #f8f9fa !important;
+    }
+}
+
+/* Color coding */
+.bg-primary { background-color: #1a5fb4 !important; }
+.bg-success { background-color: #28a745 !important; }
+.bg-info { background-color: #17a2b8 !important; }
+.bg-warning { background-color: #ffc107 !important; }
+.bg-danger { background-color: #dc3545 !important; }
+
+/* Hover effects */
+.period-cell:hover {
+    background-color: #e9ecef !important;
+}
+
+tr:hover {
+    background-color: #f8f9fa;
+}
+
+/* Sticky header for mobile scrolling */
+.table-responsive {
+    max-height: 70vh;
+    overflow-y: auto;
+}
+
+@media (max-width: 768px) {
+    .table-responsive {
+        max-height: 60vh;
+    }
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Make assignments clickable for details
+    const assignments = document.querySelectorAll('.assignment');
+    assignments.forEach(assignment => {
+        assignment.addEventListener('click', function() {
+            const teacherName = this.closest('tr').querySelector('.teacher-info strong').textContent;
+            const periodInfo = this.textContent.trim();
+            alert(`Teacher: ${teacherName}\nAssignment: ${periodInfo}`);
+        });
+    });
+    
+    // Add hover tooltips
+    const periodCells = document.querySelectorAll('.period-cell');
+    periodCells.forEach(cell => {
+        if (cell.querySelector('.assignment')) {
+            cell.title = 'Click assignment for details';
+        }
+    });
+    
+    // Add print functionality
+    const printBtn = document.querySelector('button[onclick="window.print()"]');
+    if (printBtn) {
+        printBtn.addEventListener('click', function() {
+            // Add print-specific styles
+            document.body.classList.add('printing');
+        });
+    }
+});
+</script>
+{% endblock %}

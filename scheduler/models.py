@@ -1,4 +1,5 @@
 from django.db import models
+from django.core.exceptions import ValidationError
 
 class SchoolMaster(models.Model):
     name = models.CharField(max_length=100)
@@ -24,22 +25,27 @@ class TeacherMaster(models.Model):
     SHIFT_CHOICES = [
         (1, "1st Shift (Classes 1-3)"),
         (2, "2nd Shift (Classes 4-6)"),
-        (3, "All Shifts")
+        (3, "All Shifts"),
     ]
-    
+
     name = models.CharField(max_length=100)
     shift = models.IntegerField(choices=SHIFT_CHOICES)
     no_of_classes = models.IntegerField(default=0)
-    
+
     def __str__(self):
         return f"{self.name} (Shift {self.get_shift_display()})"
-    
+
     def clean(self):
         # Validate that no_of_classes is reasonable
         if self.no_of_classes < 0:
-            raise ValidationError({'no_of_classes': 'Number of classes cannot be negative.'})
+            raise ValidationError({'no_of_classes': ['Number of classes cannot be negative.']})
         if self.no_of_classes > 40:  # Assuming 40 periods per week maximum
-            raise ValidationError({'no_of_classes': 'Number of classes cannot exceed 40 per week.'})
+            raise ValidationError({'no_of_classes': ['Number of classes cannot exceed 40 per week.']})
+
+    def save(self, *args, **kwargs):
+        # Ensure clean() is always called before saving
+        self.full_clean()
+        super().save(*args, **kwargs)
     
     def get_remaining_capacity(self):
         """Get remaining teaching capacity for this teacher"""

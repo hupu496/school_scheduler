@@ -305,9 +305,11 @@ def generate_timetable(request):
             for period in range(1, periods_per_day[day] + 1):
                 timetable_data[day][period] = {'subject': 'Free', 'teacher': ''}
         
-        # Track teacher assignments
-        teacher_assignments_track = defaultdict(list)  # Track assigned periods per teacher
-        teacher_period_count = defaultdict(int)  # Count total periods per teacher
+        # Track teacher assignments - key is (teacher_id, day, period)
+        teacher_assignments_track = set()
+        
+        # Track teacher period counts
+        teacher_period_count = defaultdict(int)
         
         # Create all possible slots (day, period) for the week
         all_slots = []
@@ -351,7 +353,7 @@ def generate_timetable(request):
                             continue
                         
                         # Check if teacher is already assigned in this period (across all classes)
-                        teacher_key = f"{teacher.id}_{day}_{period}"
+                        teacher_key = (teacher.id, day, period)
                         if teacher_key in teacher_assignments_track:
                             continue
                         
@@ -379,8 +381,8 @@ def generate_timetable(request):
                     )
                     
                     # Update tracking
-                    teacher_key = f"{teacher.id}_{day}_{period}"
-                    teacher_assignments_track[teacher_key] = True
+                    teacher_key = (teacher.id, day, period)
+                    teacher_assignments_track.add(teacher_key)
                     teacher_period_count[teacher.id] += 1
                     assigned_periods += 1
         
@@ -455,20 +457,22 @@ def validate_timetable_constraints(class_id):
     timetable_entries = Timetable.objects.filter(class_id=class_id)
     teacher_assignments = defaultdict(list)
     
+    # Check if any teacher is assigned to multiple classes in the same period
+    all_assignments = Timetable.objects.all()
+    teacher_period_assignments = defaultdict(set)
+    
+    for entry in all_assignments:
+        key = (entry.teacher.id, entry.day, entry.period_no)
+        if key in teacher_period_assignments:
+            return False, f"Teacher {entry.teacher.name} assigned to multiple classes in {entry.day} period {entry.period_no}"
+        teacher_period_assignments[key].add(entry.class_id)
+    
     for entry in timetable_entries:
         # Check teacher shift constraints
-        if not entry.teacher.can_teach_in_period(entry.period_no):
-            return False, f"Teacher {entry.teacher.name} (shift {entry.teacher.get_shift_display()}) assigned to invalid period {entry.period_no}"
-        
-        # Check teacher period conflicts (same teacher in same period across classes)
-        conflict = Timetable.objects.filter(
-            teacher=entry.teacher,
-            day=entry.day,
-            period_no=entry.period_no
-        ).exclude(class_id=class_id).exists()
-        
-        if conflict:
-            return False, f"Teacher {entry.teacher.name} has conflict in {entry.day} period {entry.period_no}"
+        if entry.teacher.shift == 1 and entry.period_no > 3:
+            return False, f"Teacher {entry.teacher.name} (1st shift) assigned to invalid period {entry.period_no}"
+        if entry.teacher.shift == 2 and entry.period_no <= 3:
+            return False, f"Teacher {entry.teacher.name} (2nd shift) assigned to invalid period {entry.period_no}"
         
         # Track teacher assignments
         teacher_assignments[entry.teacher.id].append((entry.day, entry.period_no))
@@ -480,6 +484,7 @@ def validate_timetable_constraints(class_id):
             return False, f"Teacher {teacher.name} exceeds weekly limit ({len(assignments)}/{teacher.no_of_classes})"
     
     return True, "Timetable meets all constraints"
+
 def teacher_routine(request):
     """Show all teachers with their weekly schedule summary"""
     # Get all teachers
@@ -634,4 +639,85 @@ def teacher_detail_routine(request, teacher_id):
         'classes_taught': classes_taught,
         'subjects_taught': subjects_taught,
         'remaining_capacity': max(0, teacher.no_of_classes - total_periods)
+    })
+def teacher_routine_sheet(request):
+    """Complete teacher routine sheet for all teachers across 6 days"""
+    # Get all teachers
+    teachers = TeacherMaster.objects.all().order_by('name')
+    
+    # Get date range for the week (Monday to Saturday)
+    today = timezone.now().date()
+    start_date = today - timedelta(days=today.weekday())  # Monday
+    end_date = start_date + timedelta(days=5)  # Saturday
+    
+    # Get all timetable entries
+    timetable_entries = Timetable.objects.all().select_related('teacher', 'subject')
+    
+    # Create a comprehensive data structure
+    days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+    periods = range(1, 7)  # 6 periods
+    
+    # Structure to hold all teacher schedules
+    all_teacher_schedules = []
+    
+    for teacher in teachers:
+        teacher_entries = [e for e in timetable_entries if e.teacher == teacher]
+        
+        # Create day-period matrix for this teacher
+        schedule_matrix = {}
+        for day in days:
+            schedule_matrix[day] = {}
+            for period in periods:
+                schedule_matrix[day][period] = []
+        
+        # Fill the matrix with actual entries
+        for entry in teacher_entries:
+            if entry.day in schedule_matrix and entry.period_no in schedule_matrix[entry.day]:
+                schedule_matrix[entry.day][entry.period_no].append({
+                    'class_id': entry.class_id,
+                    'subject': entry.subject.subject_name,
+                    'subject_id': entry.subject.id
+                })
+        
+        # Calculate statistics for this teacher
+        total_periods = len(teacher_entries)
+        classes_taught = sorted(set(entry.class_id for entry in teacher_entries))
+        subjects_taught = list(set(entry.subject.subject_name for entry in teacher_entries))
+        
+        # Count shift conflicts
+        shift_conflicts = sum(
+            1 for entry in teacher_entries 
+            if (teacher.shift == 1 and entry.period_no > 3) or 
+               (teacher.shift == 2 and entry.period_no <= 3)
+        )
+        
+        all_teacher_schedules.append({
+            'teacher': teacher,
+            'schedule': schedule_matrix,
+            'total_periods': total_periods,
+            'remaining_capacity': max(0, teacher.no_of_classes - total_periods),
+            'classes_taught': classes_taught,
+            'subjects_taught': subjects_taught,
+            'shift_conflicts': shift_conflicts,
+            'is_over_assigned': total_periods > teacher.no_of_classes,
+            'is_under_utilized': total_periods < teacher.no_of_classes
+        })
+    
+    # Overall statistics
+    total_entries = timetable_entries.count()
+    over_assigned_count = sum(1 for t in all_teacher_schedules if t['is_over_assigned'])
+    under_utilized_count = sum(1 for t in all_teacher_schedules if t['is_under_utilized'])
+    total_shift_conflicts = sum(t['shift_conflicts'] for t in all_teacher_schedules)
+    
+    return render(request, 'scheduler/teacher_routine_sheet.html', {
+        'all_teacher_schedules': all_teacher_schedules,
+        'days': days,
+        'periods': periods,
+        'start_date': start_date,
+        'end_date': end_date,
+        'total_teachers': len(teachers),
+        'total_entries': total_entries,
+        'over_assigned_count': over_assigned_count,
+        'under_utilized_count': under_utilized_count,
+        'total_shift_conflicts': total_shift_conflicts
     })
