@@ -14,7 +14,7 @@
         </div>
         <div class="card-body">
             <div class="table-responsive">
-                <table class="table table-bordered table-striped timetable-table">
+                <table class="table table-bordered table-striped timetable-table" id="timetable">
                     <thead class="table-dark">
                         <tr>
                             <th>Period</th>
@@ -91,6 +91,9 @@
                 <button onclick="window.print()" class="btn btn-success me-2">
                     <i class="fas fa-print me-1"></i>Print
                 </button>
+                <button id="downloadPdf" class="btn btn-danger me-2">
+                    <i class="fas fa-file-pdf me-1"></i>Download PDF
+                </button>
                 <a href="{% url 'index' %}" class="btn btn-secondary">
                     <i class="fas fa-home me-1"></i>Back to Home
                 </a>
@@ -98,6 +101,10 @@
         </div>
     </div>
 </div>
+
+<!-- Include required libraries for PDF generation -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
 <style>
 .timetable-table {
@@ -153,4 +160,101 @@
     }
 }
 </style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Set up PDF download functionality
+    document.getElementById('downloadPdf').addEventListener('click', function() {
+        // Show loading indicator
+        const originalText = this.innerHTML;
+        this.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Generating PDF...';
+        this.disabled = true;
+        
+        // Use html2canvas and jsPDF to generate PDF
+        const { jsPDF } = window.jspdf;
+        
+        // Get the timetable element
+        const element = document.getElementById('timetable');
+        const cardHeader = document.querySelector('.card-header');
+        
+        // Create a temporary container for PDF content
+        const pdfContainer = document.createElement('div');
+        pdfContainer.style.position = 'absolute';
+        pdfContainer.style.left = '-9999px';
+        pdfContainer.style.width = '800px';
+        pdfContainer.style.backgroundColor = 'white';
+        pdfContainer.style.padding = '20px';
+        pdfContainer.style.boxSizing = 'border-box';
+        
+        // Clone the header and table
+        const headerClone = cardHeader.cloneNode(true);
+        const tableClone = element.cloneNode(true);
+        
+        // Apply PDF-specific styles
+        headerClone.style.width = '100%';
+        headerClone.style.marginBottom = '20px';
+        
+        tableClone.style.width = '100%';
+        tableClone.style.fontSize = '10px';
+        
+        // Add to container
+        pdfContainer.appendChild(headerClone);
+        pdfContainer.appendChild(tableClone);
+        document.body.appendChild(pdfContainer);
+        
+        // Generate PDF
+        html2canvas(pdfContainer, {
+            scale: 2,
+            useCORS: true,
+            logging: false
+        }).then(canvas => {
+            // Remove temporary container
+            document.body.removeChild(pdfContainer);
+            
+            const imgData = canvas.toDataURL('image/png');
+            const pdf = new jsPDF('p', 'mm', 'a4');
+            const imgWidth = 210; // A4 width in mm
+            const pageHeight = 295; // A4 height in mm
+            const imgHeight = canvas.height * imgWidth / canvas.width;
+            let heightLeft = imgHeight;
+            let position = 0;
+            
+            pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+            heightLeft -= pageHeight;
+            
+            // Add additional pages if needed
+            while (heightLeft >= 0) {
+                position = heightLeft - imgHeight;
+                pdf.addPage();
+                pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+                heightLeft -= pageHeight;
+            }
+            
+            // Generate file name
+            const schoolName = "{{ school.name|default:'Timetable' }}".replace(/\s+/g, '_');
+            const className = "{{ class_id }}".replace(/\s+/g, '_');
+            const fileName = `${schoolName}_Class_${className}_Timetable.pdf`;
+            
+            // Download the PDF
+            pdf.save(fileName);
+            
+            // Reset button
+            this.innerHTML = originalText;
+            this.disabled = false;
+        }).catch(error => {
+            console.error('Error generating PDF:', error);
+            alert('Error generating PDF. Please try again.');
+            
+            // Reset button
+            this.innerHTML = originalText;
+            this.disabled = false;
+            
+            // Remove temporary container if it exists
+            if (document.body.contains(pdfContainer)) {
+                document.body.removeChild(pdfContainer);
+            }
+        });
+    });
+});
+</script>
 {% endblock %}
