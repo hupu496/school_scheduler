@@ -645,6 +645,7 @@ def teacher_routine_sheet(request):
     # Get all teachers
     teachers = TeacherMaster.objects.all().order_by('name')
     
+    
     # Get date range for the week (Monday to Saturday)
     today = timezone.now().date()
     start_date = today - timedelta(days=today.weekday())  # Monday
@@ -702,7 +703,7 @@ def teacher_routine_sheet(request):
             'is_over_assigned': total_periods > teacher.no_of_classes,
             'is_under_utilized': total_periods < teacher.no_of_classes
         })
-    
+    # return HttpResponse(all_teacher_schedules)
     # Overall statistics
     total_entries = timetable_entries.count()
     over_assigned_count = sum(1 for t in all_teacher_schedules if t['is_over_assigned'])

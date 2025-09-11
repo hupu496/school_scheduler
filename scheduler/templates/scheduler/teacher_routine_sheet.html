@@ -1,5 +1,5 @@
 {% extends 'scheduler/base.html' %}
-
+{% load custom_filters %}
 {% block content %}
 <div class="container-fluid">
     <!-- Header -->
@@ -57,24 +57,26 @@
                             {% for day in days %}
                             {% for period in periods %}
                             <td class="text-center period-cell">
-                                {% if data.schedule.day.period %}
-                                    {% for assignment in data.schedule.day.period %}
-                                        <div class="assignment">
-                                            <small class="fw-bold">C{{ assignment.class_id }}</small>
-                                            <br>
-                                            <small>{{ assignment.subject|truncatewords:2 }}</small>
-                                            {% if data.teacher.shift == 1 and period > 3 %}
-                                                <br>
-                                                <small class="text-danger">⚠️</small>
-                                            {% elif data.teacher.shift == 2 and period <= 3 %}
-                                                <br>
-                                                <small class="text-danger">⚠️</small>
-                                            {% endif %}
-                                        </div>
-                                    {% endfor %}
-                                {% else %}
-                                    <span class="text-muted">-</span>
-                                {% endif %}
+                                {% with day_schedule=data.schedule|get_item:day %}
+                                    {% with period_assignments=day_schedule|get_item:period %}
+                                        {% if period_assignments %}
+                                            {% for assignment in period_assignments %}
+                                                <div class="assignment">
+                                                    <small class="fw-bold">C{{ assignment.class_id }}</small><br>
+                                                    <small>{{ assignment.subject|truncatewords:2 }}</small>
+                                                    {% if data.teacher.shift == 1 and period > 3 %}
+                                                        <br><small class="text-danger">⚠️</small>
+                                                    {% elif data.teacher.shift == 2 and period <= 3 %}
+                                                        <br><small class="text-danger">⚠️</small>
+                                                    {% endif %}
+                                                </div>
+                                            {% endfor %}
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    {% endwith %}
+                                {% endwith %}
+
                             </td>
                             {% endfor %}
                             {% endfor %}
