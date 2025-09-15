@@ -311,14 +311,21 @@ def generate_timetable(request):
         # Track teacher period counts
         teacher_period_count = defaultdict(int)
         
+        # Get all existing teacher assignments from other classes to avoid conflicts
+        existing_assignments = Timetable.objects.exclude(class_id=class_id)
+        for assignment in existing_assignments:
+            teacher_key = (assignment.teacher_id, assignment.day, assignment.period_no)
+            teacher_assignments_track.add(teacher_key)
+            teacher_period_count[assignment.teacher_id] += 1
+        
         # Create all possible slots (day, period) for the week
         all_slots = []
         for day in days:
             for period in range(1, periods_per_day[day] + 1):
                 all_slots.append((day, period))
         
-        # Shuffle slots for random assignment
-        random.shuffle(all_slots)
+        # Sort slots by day and period for better distribution
+        all_slots.sort(key=lambda x: (x[0], x[1]))
         
         # For each subject, assign to periods
         for subject in subjects:
@@ -339,7 +346,7 @@ def generate_timetable(request):
                     if timetable_data[day][period]['subject'] != 'Free':
                         continue
                     
-                    # Find suitable teacher for this period considering shift constraints
+                    # Find suitable teacher for this period considering all constraints
                     suitable_teachers = []
                     for teacher in available_teachers:
                         # Check shift constraints
@@ -352,7 +359,7 @@ def generate_timetable(request):
                         if teacher_period_count[teacher.id] >= teacher.no_of_classes:
                             continue
                         
-                        # Check if teacher is already assigned in this period (across all classes)
+                        # Check if teacher is already assigned in this period on this day (across all classes)
                         teacher_key = (teacher.id, day, period)
                         if teacher_key in teacher_assignments_track:
                             continue
@@ -385,6 +392,66 @@ def generate_timetable(request):
                     teacher_assignments_track.add(teacher_key)
                     teacher_period_count[teacher.id] += 1
                     assigned_periods += 1
+        
+        # Handle any remaining free periods (if subjects couldn't be assigned due to constraints)
+        # Create a special "Free Period" subject or handle differently
+        free_period_subject = None
+        try:
+            # Try to get or create a special subject for free periods
+            free_period_subject, created = SubjectMaster.objects.get_or_create(
+                subject_name="Free Period",
+                defaults={'class_id': class_id, 'periods_per_week': 0}
+            )
+        except:
+            # If that fails, use the first available subject as placeholder
+            free_period_subject = subjects.first() if subjects.exists() else None
+        
+        for day, period in all_slots:
+            if timetable_data[day][period]['subject'] == 'Free' and free_period_subject:
+                # Try to find any available teacher for free period
+                all_teachers = TeacherMaster.objects.all()
+                suitable_teachers = []
+                
+                for teacher in all_teachers:
+                    # Check shift constraints
+                    if teacher.shift == 1 and period > 3:
+                        continue
+                    if teacher.shift == 2 and period <= 3:
+                        continue
+                    
+                    # Check if teacher hasn't exceeded their weekly limit
+                    if teacher_period_count[teacher.id] >= teacher.no_of_classes:
+                        continue
+                    
+                    # Check if teacher is already assigned in this period on this day
+                    teacher_key = (teacher.id, day, period)
+                    if teacher_key in teacher_assignments_track:
+                        continue
+                    
+                    suitable_teachers.append(teacher)
+                
+                if suitable_teachers:
+                    # Pick the least loaded teacher
+                    teacher = min(suitable_teachers, key=lambda t: teacher_period_count[t.id])
+                    
+                    timetable_data[day][period] = {
+                        'subject': 'Free Period',
+                        'teacher': teacher.name
+                    }
+                    
+                    # Save to database with the free period subject
+                    Timetable.objects.create(
+                        class_id=class_id,
+                        day=day,
+                        period_no=period,
+                        teacher=teacher,
+                        subject=free_period_subject
+                    )
+                    
+                    # Update tracking
+                    teacher_key = (teacher.id, day, period)
+                    teacher_assignments_track.add(teacher_key)
+                    teacher_period_count[teacher.id] += 1
         
         # Create a matrix for easier template access
         periods = list(range(1, 7))
